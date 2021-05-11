@@ -293,7 +293,7 @@ class AnnotatedIPython2CWLToolConverter:
             'baseCommand': 'notebookTool',
             'requirements': {
                 'NetworkAccess': {
-                    'networkAccess': 'true'
+                    'networkAccess': True
                 }
             },
             'hints': {
