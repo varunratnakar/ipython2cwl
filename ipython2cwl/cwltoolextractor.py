@@ -291,8 +291,10 @@ class AnnotatedIPython2CWLToolConverter:
             'cwlVersion': "v1.1",
             'class': 'CommandLineTool',
             'baseCommand': 'notebookTool',
-            'NetworkAccess': {
-                'networkAccess': 'true'
+            'requirements': {
+                'NetworkAccess': {
+                    'networkAccess': 'true'
+                }
             },
             'hints': {
                 'DockerRequirement': {'dockerImageId': docker_image_id}
