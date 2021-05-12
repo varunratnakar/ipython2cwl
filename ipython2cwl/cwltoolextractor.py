@@ -36,7 +36,7 @@ class AnnotatedVariablesExtractor(ast.NodeTransformer):
     input_type_mapper: Dict[Tuple[str, ...], Tuple[str, str]] = {
         (CWLFilePathInput.__name__,): (
             'File',
-            'pathlib.Path',
+            'str',
         ),
         (CWLBooleanInput.__name__,): (
             'boolean',
