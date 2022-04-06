@@ -79,28 +79,25 @@ def parser_arguments(argv: List[str]):
     parser.add_argument('-o', '--output', help='Output directory to store the generated cwl files',
                         type=existing_path,
                         required=True)
-
-    parser.add_argument('-l', '--log_file', help='Log file',
-                        type=str,
-                        required=True)
     return parser.parse_args(argv)
 
 
-def setup_logger(log_file):
+def setup_logger(filename=None):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh = logging.FileHandler(log_file)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    if filename is not None:
+        fh = logging.FileHandler(filename)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
 
-def repo2cwl(argv: Optional[List[str]] = None) -> int:
+def repo2cwl(argv: Optional[List[str]] = None, log_file: str = None) -> int:
+    setup_logger(log_file)
     argv = sys.argv[1:] if argv is None else argv
     args = parser_arguments(argv)
-    log_file: str = args.log_file
-    setup_logger(log_file)
     uri: ParseResult = args.repo[0]
     if uri.path.startswith('git@') and uri.path.endswith('.git'):
         uri = urlparse(f'ssh://{uri.path}')
@@ -172,7 +169,7 @@ def _repo2cwl(git_directory_path: Repo) -> Tuple[str, List[Dict]]:
         cwl_command_line_tool['baseCommand'] = os.path.join('/app', 'cwl', 'bin', script_name)
         tools.append(cwl_command_line_tool)
     git_directory_path.index.commit("auto-commit")
-    r2d.log.addHandler(logger.handlers[0])
+
     r2d.build()
     # fix dockerImageId
     for cwl_command_line_tool in tools:
@@ -182,4 +179,3 @@ def _repo2cwl(git_directory_path: Repo) -> Tuple[str, List[Dict]]:
 
 if __name__ == '__main__':
     repo2cwl()
-    
