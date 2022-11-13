@@ -36,7 +36,7 @@ class AnnotatedVariablesExtractor(ast.NodeTransformer):
     input_type_mapper: Dict[Tuple[str, ...], Tuple[str, str]] = {
         (CWLFilePathInput.__name__,): (
             'File',
-            'pathlib.Path',
+            'str',
         ),
         (CWLBooleanInput.__name__,): (
             'boolean',
@@ -295,6 +295,11 @@ class AnnotatedIPython2CWLToolConverter:
             'cwlVersion': "v1.1",
             'class': 'CommandLineTool',
             'baseCommand': 'notebookTool',
+            'requirements': {
+                'NetworkAccess': {
+                    'networkAccess': True
+                }
+            },
             'hints': {
                 'DockerRequirement': {'dockerImageId': docker_image_id}
             },

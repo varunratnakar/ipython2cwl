@@ -23,7 +23,8 @@ logger.setLevel(logging.INFO)
 
 def _get_notebook_paths_from_dir(dir_path: str):
     notebooks_paths = []
-    for path, _, files in os.walk(dir_path):
+    for path, dirs, files in os.walk(dir_path):
+        dirs[:] = [d for d in dirs if d not in "cwl"]
         for name in files:
             if name.endswith('.ipynb'):
                 notebooks_paths.append(os.path.join(path, name))
@@ -40,16 +41,14 @@ def _store_jn_as_script(notebook_path: str, git_directory_absolute_path: str, bi
     if len(converter._variables) == 0:
         logger.info(f"Notebook {notebook_path} does not contains typing annotations. skipping...")
         return None, None
-    script_relative_path = os.path.relpath(notebook_path, git_directory_absolute_path)[:-6]
-    script_relative_parent_directories = script_relative_path.split(os.sep)
-    if len(script_relative_parent_directories) > 1:
-        script_absolute_name = os.path.join(bin_absolute_path, os.sep.join(script_relative_parent_directories[:-1]))
-        os.makedirs(
-            script_absolute_name,
-            exist_ok=True)
-        script_absolute_name = os.path.join(script_absolute_name, os.path.basename(script_relative_path))
-    else:
-        script_absolute_name = os.path.join(bin_absolute_path, script_relative_path)
+
+    #change the extension from ipynb to nothing
+    notebook_absolute = Path(notebook_path)
+    notebook_relative_to_git = notebook_absolute.relative_to(git_directory_absolute_path)
+    notebook_name_without_extension = notebook_absolute.stem
+    script_absolute = Path(bin_absolute_path) / notebook_relative_to_git.parent / notebook_name_without_extension
+    #write the script, return it relative to
+    script_relative_to_git = script_absolute.relative_to(bin_absolute_path)
     script = os.linesep.join([
         '#!/usr/bin/env ipython',
         '"""',
@@ -59,13 +58,12 @@ def _store_jn_as_script(notebook_path: str, git_directory_absolute_path: str, bi
         '"""\n\n',
         converter._wrap_script_to_method(converter._tree, converter._variables)
     ])
-    with open(script_absolute_name, 'w') as fd:
+    with open(script_absolute, 'w') as fd:
         fd.write(script)
     tool = converter.cwl_command_line_tool(image_id)
-    in_git_dir_script_file = os.path.join(bin_absolute_path, script_relative_path)
-    tool_st = os.stat(in_git_dir_script_file)
-    os.chmod(in_git_dir_script_file, tool_st.st_mode | stat.S_IEXEC)
-    return tool, script_relative_path
+    tool_st = os.stat(script_absolute)
+    os.chmod(script_absolute, tool_st.st_mode | stat.S_IEXEC)
+    return tool, str(script_relative_to_git)
 
 
 def existing_path(path_str: str):
@@ -84,16 +82,20 @@ def parser_arguments(argv: List[str]):
     return parser.parse_args(argv)
 
 
-def setup_logger():
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
+def setup_logger(filename=None):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    if filename is not None:
+        fh = logging.FileHandler(filename)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
 
-def repo2cwl(argv: Optional[List[str]] = None) -> int:
-    setup_logger()
+def repo2cwl(argv: Optional[List[str]] = None, log_file: str = None) -> int:
+    setup_logger(log_file)
     argv = sys.argv[1:] if argv is None else argv
     args = parser_arguments(argv)
     uri: ParseResult = args.repo[0]
@@ -126,7 +128,8 @@ def repo2cwl(argv: Optional[List[str]] = None) -> int:
     image_id, cwl_tools = _repo2cwl(local_git)
     logger.info(f'Generated image id: {image_id}')
     for tool in cwl_tools:
-        base_command_script_name = f'{tool["baseCommand"][len("/app/cwl/bin/"):].replace("/", "_")}.cwl'
+        script_name_path = Path(tool["baseCommand"]).stem
+        base_command_script_name = f"""{str(script_name_path)}.cwl"""
         tool_filename = str(output_directory.joinpath(base_command_script_name))
         with open(tool_filename, 'w') as f:
             logger.info(f'Creating CWL command line tool: {tool_filename}')
@@ -148,9 +151,11 @@ def _repo2cwl(git_directory_path: Repo) -> Tuple[str, List[Dict]]:
     r2d.target_repo_dir = os.path.join(os.path.sep, 'app')
     r2d.repo = git_directory_path.tree().abspath
     bin_path = os.path.join(r2d.repo, 'cwl', 'bin')
-    os.makedirs(bin_path, exist_ok=True)
-    notebooks_paths = _get_notebook_paths_from_dir(r2d.repo)
+    shutil.copytree(r2d.repo, bin_path)
 
+    notebooks_paths = _get_notebook_paths_from_dir(r2d.repo)
+    logger.info(notebooks_paths)
+    
     tools = []
     for notebook in notebooks_paths:
         cwl_command_line_tool, script_name = _store_jn_as_script(
