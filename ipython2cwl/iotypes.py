@@ -14,6 +14,8 @@ Each variable can be an input or an output. The basic data types are:
   * CWLStringInput
 
   * CWLIntInput
+  
+  * CWLFloatInput
 
 * Outputs:
 
@@ -83,6 +85,16 @@ class CWLIntInput(_CWLInput):
     >>> dataset1: CWLIntInput = 1
     >>> dataset2: 'CWLIntInput' = 2
 
+    """
+    pass
+
+
+class CWLFloatInput(_CWLInput):
+    """Use that hint to annotate that a variable is a float input. You can use the typing annotation
+    as a string by importing it. At the generated script a command line argument with the name of the variable
+    will be created and the assignment of value will be generalised.
+    >>> dataset1: CWLFloatInput = 1
+    >>> dataset2: 'CWLFloatInput' = 2
     """
     pass
 
