@@ -40,7 +40,8 @@ class AnnotatedVariablesExtractor(ast.NodeTransformer):
         ),
         (CWLBooleanInput.__name__,): (
             'boolean',
-            'lambda flag: flag.upper() == "TRUE"',
+            'boolean'
+            #'lambda flag: flag.upper() == "TRUE"',
         ),
         (CWLIntInput.__name__,): (
             'int',
@@ -271,9 +272,13 @@ class AnnotatedIPython2CWLToolConverter:
         for variable in variables:
             is_array = variable.cwl_typeof.endswith('[]')
             is_optional = variable.cwl_typeof.endswith('?')
+            is_boolean = variable.cwl_typeof == 'boolean'
             arg: str = f'parser.add_argument("--{variable.name}", '
-            arg += f'type={variable.argparse_typeof}, '
-            arg += f'required={variable.required}, '
+            if is_boolean:
+                arg += f'action="store_true", '
+            else:
+                arg += f'type={variable.argparse_typeof}, '
+                arg += f'required={variable.required}, '
             if is_array:
                 arg += f'nargs="+", '
             if is_optional:
