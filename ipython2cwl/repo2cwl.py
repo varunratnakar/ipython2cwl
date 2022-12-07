@@ -76,6 +76,8 @@ def existing_path(path_str: str):
 def parser_arguments(argv: List[str]):
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', type=lambda uri: urlparse(uri, scheme='file'), nargs=1)
+    parser.add_argument('-t', '--tag', help='Output tag for storing the generated docker image',
+                        required=True)    
     parser.add_argument('-o', '--output', help='Output directory to store the generated cwl files',
                         type=existing_path,
                         required=True)
@@ -102,6 +104,7 @@ def repo2cwl(argv: Optional[List[str]] = None, log_file: str = None) -> int:
     if uri.path.startswith('git@') and uri.path.endswith('.git'):
         uri = urlparse(f'ssh://{uri.path}')
     output_directory: Path = args.output
+    tag: str = args.tag
     supported_schemes = {'file', 'http', 'https', 'ssh'}
     if uri.scheme not in supported_schemes:
         raise ValueError(f'Supported schema uris: {supported_schemes}')
@@ -125,7 +128,7 @@ def repo2cwl(argv: Optional[List[str]] = None, log_file: str = None) -> int:
         logger.info(f'cloning repo to temp directory: {local_git_directory}')
         local_git = git.Repo.clone_from(uri.geturl(), local_git_directory)
 
-    image_id, cwl_tools = _repo2cwl(local_git)
+    image_id, cwl_tools = _repo2cwl(local_git, tag)
     logger.info(f'Generated image id: {image_id}')
     for tool in cwl_tools:
         script_name_path = Path(tool["baseCommand"]).stem
@@ -140,7 +143,7 @@ def repo2cwl(argv: Optional[List[str]] = None, log_file: str = None) -> int:
     return 0
 
 
-def _repo2cwl(git_directory_path: Repo) -> Tuple[str, List[Dict]]:
+def _repo2cwl(git_directory_path: Repo, tag: str) -> Tuple[str, List[Dict]]:
     """
     Takes a Repo mounted to a local directory. That function will create new files and it will commit the changes.
     Do not use that function for Repositories you do not want to change them.
@@ -150,6 +153,7 @@ def _repo2cwl(git_directory_path: Repo) -> Tuple[str, List[Dict]]:
     r2d = Repo2Docker()
     r2d.target_repo_dir = os.path.join(os.path.sep, 'app')
     r2d.repo = git_directory_path.tree().abspath
+    r2d.output_image_spec = tag
     bin_path = os.path.join(r2d.repo, 'cwl', 'bin')
     shutil.copytree(r2d.repo, bin_path)
 
