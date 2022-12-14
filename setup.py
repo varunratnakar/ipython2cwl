@@ -68,7 +68,8 @@ setup(
         'PyYAML>=5.3.1',
         'gitpython>=3.1.3',
         'jupyter-repo2docker @ git+https://github.com/varunratnakar/repo2docker',
-        'nbconvert==5.6.1',
+        'jinja2==3.0.3',
+        'nbconvert==6.4.4',
         'ipython>=7.15.0',
         'pendulum'
     ],
