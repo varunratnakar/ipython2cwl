@@ -69,7 +69,8 @@ setup(
         'gitpython>=3.1.3',
         'jupyter-repo2docker @ git+https://github.com/varunratnakar/repo2docker',
         'nbconvert==5.6.1',
-        'ipython>=7.15.0'
+        'ipython>=7.15.0',
+        'pendulum'
     ],
     test_suite='tests',
     url='https://ipython2cwl.readthedocs.io/'
